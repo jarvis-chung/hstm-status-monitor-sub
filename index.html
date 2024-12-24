@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Status Page</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header>
+    <h1>Status Page</h1>
+    <p>Last Updated: Dec 24, 2024</p>
+  </header>
+  
+  <div class="content">
+    <!-- Service History Section -->
+    <div class="section">
+      <h2>Service History</h2>
+      <ul>
+        <li>Dec 24, 2024: ⚠️ Some issues detected</li>
+        <li>Dec 23, 2024: ✅ All services operational</li>
+        <li>Dec 22, 2024: ❌ Outage in Lightsail</li>
+        <li>Dec 21, 2024: ✅ All services operational</li>
+        <li>Dec 20, 2024: ⚠️ Degradation in Lambda</li>
+      </ul>
+    </div>
+
+    <!-- List of Events -->
+    <div class="section">
+      <h2>List of Events</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Event</th>
+            <th>Start Time</th>
+            <th>Last Update Time</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr onclick="showEventDetails('event1')">
+            <td>Increased Latency</td>
+            <td>Dec 24, 2024, 12:00 UTC</td>
+            <td>Dec 24, 2024, 12:20 UTC</td>
+          </tr>
+          <tr onclick="showEventDetails('event2')">
+            <td>Service Outage</td>
+            <td>Dec 24, 2024, 13:00 UTC</td>
+            <td>Dec 24, 2024, 14:00 UTC</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Event Details -->
+    <div id="event-details" class="section hidden">
+      <h2>Event Details</h2>
+      <p><strong>Status:</strong> <span id="event-status" class="resolved">Resolved</span></p>
+      <p><strong>Event Name:</strong> <span id="event-name">Service Outage</span></p>
+      <p><strong>Start Time:</strong> <span id="event-start">Dec 24, 2024, 13:00 UTC</span></p>
+      <p><strong>Last Update Time:</strong> <span id="event-last-update">Dec 24, 2024, 14:00 UTC</span></p>
+      <p><strong>Service:</strong> <span id="event-service">S3 Storage</span></p>
+      <h3>Description</h3>
+      <div class="timeline">
+        <div class="timeline-item">
+          <p><strong>13:00 UTC:</strong> Service outage detected.</p>
+        </div>
+        <div class="timeline-item">
+          <p><strong>13:30 UTC:</strong> Engineers identified the root cause.</p>
+        </div>
+        <div class="timeline-item">
+          <p><strong>14:00 UTC:</strong> Service restored.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function showEventDetails(eventId) {
+      const detailsSection = document.getElementById("event-details");
+      detailsSection.classList.remove("hidden");
+
+      if (eventId === "event1") {
+        document.getElementById("event-status").textContent = "Resolved";
+        document.getElementById("event-status").className = "resolved";
+        document.getElementById("event-name").textContent = "Increased Latency";
+        document.getElementById("event-start").textContent = "Dec 24, 2024, 12:00 UTC";
+        document.getElementById("event-last-update").textContent = "Dec 24, 2024, 12:20 UTC";
+        document.getElementById("event-service").textContent = "Lightsail";
+        document.querySelector(".timeline").innerHTML = `
+          <div class="timeline-item">
+            <p><strong>12:00 UTC:</strong> High latency detected.</p>
+          </div>
+          <div class="timeline-item">
+            <p><strong>12:10 UTC:</strong> Engineers are investigating.</p>
+          </div>
+          <div class="timeline-item">
+            <p><strong>12:20 UTC:</strong> Latency issue resolved.</p>
+          </div>
+        `;
+      } else if (eventId === "event2") {
+        document.getElementById("event-status").textContent = "Resolved";
+        document.getElementById("event-status").className = "resolved";
+        document.getElementById("event-name").textContent = "Service Outage";
+        document.getElementById("event-start").textContent = "Dec 24, 2024, 13:00 UTC";
+        document.getElementById("event-last-update").textContent = "Dec 24, 2024, 14:00 UTC";
+        document.getElementById("event-service").textContent = "S3 Storage";
+        document.querySelector(".timeline").innerHTML = `
+          <div class="timeline-item">
+            <p><strong>13:00 UTC:</strong> Service outage detected.</p>
+          </div>
+          <div class="timeline-item">
+            <p><strong>13:30 UTC:</strong> Engineers identified the root cause.</p>
+          </div>
+          <div class="timeline-item">
+            <p><strong>14:00 UTC:</strong> Service restored.</p>
+          </div>
+        `;
+      }
+    }
+  </script>
+</body>
+</html>
