@@ -56,22 +56,33 @@
   </div>
 
   <script>
-    // Mock API endpoints
-    const base_url = 'http://localhost:8000'
-    const API_ENDPOINTS = {
-      serviceHistory: '/api/scorm/api/service-history',
-      eventList: '/api/scorm/api/event-list',
-      eventDetails: (eventId) => `/api/scorm/api/event-details/${eventId}`
-    };
+    // GraphQL API Endpoint
+    const GRAPHQL_URL = "https://curious-moccasin-87.hasura.app/v1/graphql";
 
     // Fetch Service History
     async function fetchServiceHistory() {
-      const response = await fetch(base_url + API_ENDPOINTS.serviceHistory);
-      const data = await response.json();
-      const serviceHistoryElement = document.getElementById('service-history');
-      serviceHistoryElement.innerHTML = '';
-      data.history.forEach((item) => {
-        const listItem = document.createElement('li');
+      const response = await fetch(GRAPHQL_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          query: `
+            query GetHistoryList {
+              history {
+                _id
+                date
+                status
+              }
+            }
+          `,
+        }),
+      });
+      const result = await response.json();
+      const serviceHistoryElement = document.getElementById("service-history");
+      serviceHistoryElement.innerHTML = "";
+      result.data.history.forEach((item) => {
+        const listItem = document.createElement("li");
         listItem.textContent = `${item.date}: ${item.status}`;
         serviceHistoryElement.appendChild(listItem);
       });
@@ -79,54 +90,116 @@
 
     // Fetch Event List
     async function fetchEventList() {
-      const response = await fetch(base_url + API_ENDPOINTS.eventList);
-      const data = await response.json();
-      const eventListElement = document.getElementById('event-list');
-      eventListElement.innerHTML = '';
-      data.events.forEach((event) => {
-        const row = document.createElement('tr');
+      const response = await fetch(GRAPHQL_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          query: `
+            query GetEvent {
+              event {
+                name
+                _id
+                lastUpdateTime
+                service
+                startTime
+                resolved
+              }
+            }
+          `,
+        }),
+      });
+      const result = await response.json();
+      const eventListElement = document.getElementById("event-list");
+      eventListElement.innerHTML = "";
+      result.data.event.forEach((event) => {
+        const row = document.createElement("tr");
         row.innerHTML = `
           <td>${event.name}</td>
           <td>${event.startTime}</td>
           <td>${event.lastUpdateTime}</td>
         `;
-        row.addEventListener('click', () => fetchEventDetails(event.id));
+        // Add event listener to fetch details on click
+        row.addEventListener("click", () => fetchEventDetails(event._id));
         eventListElement.appendChild(row);
       });
     }
 
     // Fetch Event Details
+    // Fetch Event Details
     async function fetchEventDetails(eventId) {
-      const response = await fetch(base_url + API_ENDPOINTS.eventDetails(eventId));
-      const data = await response.json();
-      const eventDetailsSection = document.getElementById('event-details');
-      document.getElementById('event-status').textContent = data.resolved ? 'Resolved' : 'Unresolved';
-      document.getElementById('event-name').textContent = data.name;
-      document.getElementById('event-start').textContent = data.startTime;
-      document.getElementById('event-last-update').textContent = data.lastUpdateTime;
-      document.getElementById('event-service').textContent = data.service;
+      const response = await fetch(GRAPHQL_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          query: `
+            query GetEventDetail($id: string) {
+              event_detail(where: { _id: { _eq: $id } }) {
+                _id
+                name
+                startTime
+                lastUpdateTime
+              }
+            }
+          `,
+          variables: {
+            id: eventId,
+          },
+        }),
+      }); 
 
-      const timelineElement = document.getElementById('event-description');
-      timelineElement.innerHTML = '';
-      data.description.forEach((desc) => {
-        const timelineItem = document.createElement('div');
-        timelineItem.className = 'timeline-item';
-        timelineItem.innerHTML = `<p><strong>${desc.time}:</strong> ${desc.detail}</p>`;
-        timelineElement.appendChild(timelineItem);
-      });
+      const result = await response.json(); 
 
-      eventDetailsSection.classList.remove('hidden');
+      if (response.ok && !result.errors) {
+        const eventData = result.data.event_detail[0]; // Assuming one matching record  
+
+        // Update event details section
+        const eventDetailsSection = document.getElementById("event-details");
+        document.getElementById("event-status").textContent = eventData.resolved
+          ? "Resolved"
+          : "Unresolved";
+        document.getElementById("event-name").textContent = eventData.name;
+        document.getElementById("event-start").textContent = eventData.startTime;
+        document.getElementById("event-last-update").textContent =
+          eventData.lastUpdateTime;
+          document.getElementById("event-service").textContent = eventData.service || "N/A";
+
+          const timelineElement = document.getElementById("event-description");
+          timelineElement.innerHTML = "";
+          if (eventData.description) {
+            eventData.description.forEach((desc) => {
+              const timelineItem = document.createElement("div");
+              timelineItem.className = "timeline-item";
+              timelineItem.innerHTML = `<p><strong>${desc.time}:</strong> ${desc.detail}</p>`;
+              timelineElement.appendChild(timelineItem);
+            });
+          } else {
+            const emptyMessage = document.createElement("div");
+            emptyMessage.className = "timeline-item";
+            emptyMessage.innerHTML = `<p>N/A</p>`;
+            timelineElement.appendChild(emptyMessage);
+          }
+
+        // Show event details section
+        eventDetailsSection.classList.remove("hidden");
+      } else {
+        console.error("GraphQL Error:", result.errors || response.statusText);
+      }
     }
+
 
     // Initialize Page
     async function initializePage() {
-      const lastUpdatedElement = document.getElementById('last-updated');
+      const lastUpdatedElement = document.getElementById("last-updated");
       lastUpdatedElement.textContent = new Date().toLocaleString();
       await Promise.all([fetchServiceHistory(), fetchEventList()]);
     }
 
     // On page load
-    document.addEventListener('DOMContentLoaded', initializePage);
+    document.addEventListener("DOMContentLoaded", initializePage);
   </script>
 </body>
 </html>
