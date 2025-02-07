@@ -98,14 +98,22 @@
     });
 
     const result = await response.json();
-    console.log(result);
+    
     const serviceHistoryElement = document.getElementById("service-history");
-    serviceHistoryElement.innerHTML = "";
-    result.data.history.forEach((item) => {
-      const listItem = document.createElement("li");
-      listItem.textContent = `${item.date}: ${item.status}`;
-      serviceHistoryElement.appendChild(listItem);
+    const filteredHistory = result.data.history.filter(item => {
+      return !item.status.includes("✅") && !item.status.includes("⚠️");
     });
+    
+    serviceHistoryElement.innerHTML = "";
+    if (filteredHistory.length > 0) {
+      filteredHistory.forEach(item => {
+        const listItem = document.createElement("li");
+        listItem.textContent = `${item.date}: ${item.status}`;
+        serviceHistoryElement.appendChild(listItem);
+      });
+    } else {
+      serviceHistoryElement.innerHTML = "<li>N/A</li>";
+    }
   }
 
     // Fetch Event List
