@@ -90,6 +90,7 @@
 
     const result = await response.json();
     const serviceHistoryElement = document.getElementById("service-history");
+    console.log(result);
     serviceHistoryElement.innerHTML = "";
     result.data.history.forEach((item) => {
       const listItem = document.createElement("li");
