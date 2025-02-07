@@ -79,7 +79,7 @@
       },
       body: JSON.stringify({
         query: `
-          query GetHistoryList($from_date: String!) {
+          query GetHistoryList($from_date: string!) {
             history(
               where: { 
                 date: { _gt: $from_date },
