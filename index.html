@@ -83,10 +83,6 @@
             history(
               where: { 
                 date: { _gt: $from_date },
-                _and: [
-                  { status: { _nlike: "%✅%" } },
-                  { status: { _nlike: "%⚠️%" } }
-                ]
               }
             ) {
               _id
