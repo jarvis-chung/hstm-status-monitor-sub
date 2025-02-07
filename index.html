@@ -61,32 +61,41 @@
 
     // Fetch Service History
     async function fetchServiceHistory() {
-      const response = await fetch(GRAPHQL_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          query: `
-            query GetHistoryList {
-              history {
-                _id
-                date
-                status
-              }
+    // 현재 날짜에서 1개월 전 날짜 계산
+    const oneMonthAgo = new Date();
+    oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+    const oneMonthAgoISOString = oneMonthAgo.toISOString();
+
+    const response = await fetch(GRAPHQL_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        query: `
+          query GetHistoryList($from_date: timestamptz!) {
+            history(where: { date: { _gt: $from_date } }) {
+              _id
+              date
+              status
             }
-          `,
-        }),
-      });
-      const result = await response.json();
-      const serviceHistoryElement = document.getElementById("service-history");
-      serviceHistoryElement.innerHTML = "";
-      result.data.history.forEach((item) => {
-        const listItem = document.createElement("li");
-        listItem.textContent = `${item.date}: ${item.status}`;
-        serviceHistoryElement.appendChild(listItem);
-      });
-    }
+          }
+        `,
+        variables: {
+          from_date: oneMonthAgoISOString
+        }
+      }),
+    });
+
+    const result = await response.json();
+    const serviceHistoryElement = document.getElementById("service-history");
+    serviceHistoryElement.innerHTML = "";
+    result.data.history.forEach((item) => {
+      const listItem = document.createElement("li");
+      listItem.textContent = `${item.date}: ${item.status}`;
+      serviceHistoryElement.appendChild(listItem);
+    });
+  }
 
     // Fetch Event List
     async function fetchEventList() {
