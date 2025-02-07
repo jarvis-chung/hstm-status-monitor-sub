@@ -59,12 +59,18 @@
     // GraphQL API Endpoint
     const GRAPHQL_URL = "https://curious-moccasin-87.hasura.app/v1/graphql";
 
-    // Fetch Service History
-    async function fetchServiceHistory() {
-    // 현재 날짜에서 1개월 전 날짜 계산
+    function getOneMonthAgoFormatted() {
     const oneMonthAgo = new Date();
     oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
-    const oneMonthAgoISOString = oneMonthAgo.toISOString();
+    const day = oneMonthAgo.getDate().toString().padStart(2, '0');
+    const month = (oneMonthAgo.getMonth() + 1).toString().padStart(2, '0');
+    const year = oneMonthAgo.getFullYear();
+    return `${day}/${month}/${year}`;
+  }
+
+  // Fetch Service History (1개월 전 데이터부터 조회하며, status에 "✅" 또는 "⚠️"가 포함된 항목은 제외)
+  async function fetchServiceHistory() {
+    const fromDateFormatted = getOneMonthAgoFormatted();
 
     const response = await fetch(GRAPHQL_URL, {
       method: "POST",
@@ -73,8 +79,16 @@
       },
       body: JSON.stringify({
         query: `
-          query GetHistoryList($from_date: timestamptz!) {
-            history(where: { date: { _gt: $from_date } }) {
+          query GetHistoryList($from_date: String!) {
+            history(
+              where: { 
+                date: { _gt: $from_date },
+                _and: [
+                  { status: { _nlike: "%✅%" } },
+                  { status: { _nlike: "%⚠️%" } }
+                ]
+              }
+            ) {
               _id
               date
               status
@@ -82,15 +96,14 @@
           }
         `,
         variables: {
-          from_date: oneMonthAgoISOString
+          from_date: fromDateFormatted
         }
       }),
     });
-    console.log('history fetched');
 
     const result = await response.json();
-    const serviceHistoryElement = document.getElementById("service-history");
     console.log(result);
+    const serviceHistoryElement = document.getElementById("service-history");
     serviceHistoryElement.innerHTML = "";
     result.data.history.forEach((item) => {
       const listItem = document.createElement("li");
