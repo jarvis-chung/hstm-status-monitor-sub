@@ -9,21 +9,29 @@
 <body>
   <header>
     <h1>Status Page</h1>
-    <p>Last Updated: Dec 24, 2024</p>
+    <p>Last Updated: <span id="last-updated">Loading...</span></p>
   </header>
   
   <div class="content">
     <!-- Service History Section -->
     <div class="section">
-      <h2>Service History</h2>
-      <ul>
-        <li>Dec 24, 2024: ⚠️ Some issues detected</li>
-        <li>Dec 23, 2024: ✅ All services operational</li>
-        <li>Dec 22, 2024: ❌ Outage in Lightsail</li>
-        <li>Dec 21, 2024: ✅ All services operational</li>
-        <li>Dec 20, 2024: ⚠️ Degradation in Lambda</li>
+      <div class="section-header">
+        <h2>Service History</h2>
+        <button id="download-report" class="download-btn">Download Report</button>
+      </div>
+      <div>
+        <span>Year</span>
+        <select id="year-filter"></select>
+        <span>Month</span>
+        <select id="month-filter"></select>
+      </div>
+      <ul id="service-history">
+        <li>Loading...</li>
       </ul>
     </div>
+
+    <!-- 차트를 그리기 위한 숨겨진 캔버스 -->
+    <canvas id="reportChart" style="display: none;"></canvas>
 
     <!-- List of Events -->
     <div class="section">
@@ -36,17 +44,8 @@
             <th>Last Update Time</th>
           </tr>
         </thead>
-        <tbody>
-          <tr onclick="showEventDetails('event1')">
-            <td>Increased Latency</td>
-            <td>Dec 24, 2024, 12:00 UTC</td>
-            <td>Dec 24, 2024, 12:20 UTC</td>
-          </tr>
-          <tr onclick="showEventDetails('event2')">
-            <td>Service Outage</td>
-            <td>Dec 24, 2024, 13:00 UTC</td>
-            <td>Dec 24, 2024, 14:00 UTC</td>
-          </tr>
+        <tbody id="event-list">
+          <tr><td colspan="3">Loading...</td></tr>
         </tbody>
       </table>
     </div>
@@ -54,69 +53,348 @@
     <!-- Event Details -->
     <div id="event-details" class="section hidden">
       <h2>Event Details</h2>
-      <p><strong>Status:</strong> <span id="event-status" class="resolved">Resolved</span></p>
-      <p><strong>Event Name:</strong> <span id="event-name">Service Outage</span></p>
-      <p><strong>Start Time:</strong> <span id="event-start">Dec 24, 2024, 13:00 UTC</span></p>
-      <p><strong>Last Update Time:</strong> <span id="event-last-update">Dec 24, 2024, 14:00 UTC</span></p>
-      <p><strong>Service:</strong> <span id="event-service">S3 Storage</span></p>
+      <p><strong>Status:</strong> <span id="event-status">Loading...</span></p>
+      <p><strong>Event Name:</strong> <span id="event-name">Loading...</span></p>
+      <p><strong>Start Time:</strong> <span id="event-start">Loading...</span></p>
+      <p><strong>Last Update Time:</strong> <span id="event-last-update">Loading...</span></p>
+      <p><strong>Service:</strong> <span id="event-service">Loading...</span></p>
       <h3>Description</h3>
-      <div class="timeline">
+      <div class="timeline" id="event-description">
         <div class="timeline-item">
-          <p><strong>13:00 UTC:</strong> Service outage detected.</p>
-        </div>
-        <div class="timeline-item">
-          <p><strong>13:30 UTC:</strong> Engineers identified the root cause.</p>
-        </div>
-        <div class="timeline-item">
-          <p><strong>14:00 UTC:</strong> Service restored.</p>
+          <p>Loading...</p>
         </div>
       </div>
     </div>
   </div>
 
-  <script>
-    function showEventDetails(eventId) {
-      const detailsSection = document.getElementById("event-details");
-      detailsSection.classList.remove("hidden");
+  <!-- 외부 라이브러리 추가 -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
-      if (eventId === "event1") {
-        document.getElementById("event-status").textContent = "Resolved";
-        document.getElementById("event-status").className = "resolved";
-        document.getElementById("event-name").textContent = "Increased Latency";
-        document.getElementById("event-start").textContent = "Dec 24, 2024, 12:00 UTC";
-        document.getElementById("event-last-update").textContent = "Dec 24, 2024, 12:20 UTC";
-        document.getElementById("event-service").textContent = "Lightsail";
-        document.querySelector(".timeline").innerHTML = `
-          <div class="timeline-item">
-            <p><strong>12:00 UTC:</strong> High latency detected.</p>
-          </div>
-          <div class="timeline-item">
-            <p><strong>12:10 UTC:</strong> Engineers are investigating.</p>
-          </div>
-          <div class="timeline-item">
-            <p><strong>12:20 UTC:</strong> Latency issue resolved.</p>
-          </div>
-        `;
-      } else if (eventId === "event2") {
-        document.getElementById("event-status").textContent = "Resolved";
-        document.getElementById("event-status").className = "resolved";
-        document.getElementById("event-name").textContent = "Service Outage";
-        document.getElementById("event-start").textContent = "Dec 24, 2024, 13:00 UTC";
-        document.getElementById("event-last-update").textContent = "Dec 24, 2024, 14:00 UTC";
-        document.getElementById("event-service").textContent = "S3 Storage";
-        document.querySelector(".timeline").innerHTML = `
-          <div class="timeline-item">
-            <p><strong>13:00 UTC:</strong> Service outage detected.</p>
-          </div>
-          <div class="timeline-item">
-            <p><strong>13:30 UTC:</strong> Engineers identified the root cause.</p>
-          </div>
-          <div class="timeline-item">
-            <p><strong>14:00 UTC:</strong> Service restored.</p>
-          </div>
-        `;
+  <script>
+    const GRAPHQL_URL = "https://curious-moccasin-87.hasura.app/v1/graphql";
+
+    function initializeMonthFilter() {
+      const yearFilter = document.getElementById('year-filter');
+      const monthFilter = document.getElementById('month-filter');
+      const today = new Date();
+      const currentYear = today.getFullYear();
+      const currentMonth = today.getMonth() + 1;
+
+      // 연도 옵션 생성 (2025년부터 현재 연도까지)
+      for (let year = 2025; year >= currentYear; year--) {
+        const option = document.createElement('option');
+        option.value = year;
+        option.textContent = `${year}`;
+        yearFilter.appendChild(option);
+      }
+
+      // 월 옵션 업데이트 함수
+      function updateMonthOptions() {
+        const selectedYear = parseInt(yearFilter.value);
+        monthFilter.innerHTML = ''; // 기존 옵션 초기화
+
+        // 최대 월 계산 (현재 연도인 경우 현재 월까지만)
+        const maxMonth = selectedYear === currentYear ? currentMonth : 12;
+
+        for (let month = 1; month <= maxMonth; month++) {
+          const option = document.createElement('option');
+          option.value = month.toString().padStart(2, '0');
+          option.textContent = `${month}`;
+          monthFilter.appendChild(option);
+        }
+      }
+
+      // 초기 월 옵션 설정
+      updateMonthOptions();
+
+      // 이벤트 리스너 설정
+      yearFilter.addEventListener('change', () => {
+        updateMonthOptions();
+        fetchServiceHistory();
+      });
+
+      monthFilter.addEventListener('change', fetchServiceHistory);
+    }
+
+    function getSelectedMonthDates() {
+      const selectedYear = document.getElementById('year-filter').value;
+      const selectedMonth = document.getElementById('month-filter').value;
+      
+      // 선택된 월의 시작일과 종료일을 Date 객체로 생성
+      const startDate = new Date(selectedYear, parseInt(selectedMonth) - 1, 1);
+      const endDate = new Date(selectedYear, parseInt(selectedMonth), 0, 23, 59, 59); // 해당 월의 마지막 날 23:59:59
+
+      // timestamp로 변환 (밀리초 단위)
+      return {
+        startTimestamp: startDate.getTime().toString(),
+        endTimestamp: endDate.getTime().toString()
+      };
+    }
+
+    async function fetchServiceHistory() {
+      const { startTimestamp, endTimestamp } = getSelectedMonthDates();
+
+      const response = await fetch(GRAPHQL_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          query: `
+            query GetHistoryList($start_timestamp: string!, $end_timestamp: string!) {
+              history(
+                where: { 
+                  _id: { _gte: $start_timestamp, _lte: $end_timestamp }
+                },
+                order_by: { _id: asc }
+              ) {
+                _id
+                date
+                status
+              }
+            }
+          `,
+          variables: {
+            start_timestamp: startTimestamp,
+            end_timestamp: endTimestamp
+          }
+        }),
+      });
+
+      const result = await response.json();
+      console.log("History", result);
+      
+      const serviceHistoryElement = document.getElementById("service-history");
+      const filteredHistory = result.data.history.filter(item => {
+        return !item.status.includes("✅") && !item.status.includes("⚠️");
+      });
+      
+      serviceHistoryElement.innerHTML = "";
+      if (filteredHistory.length > 0) {
+        filteredHistory.forEach(item => {
+          const listItem = document.createElement("li");
+          listItem.textContent = `${item.date}: ${item.status}`;
+          serviceHistoryElement.appendChild(listItem);
+        });
+      } else {
+        serviceHistoryElement.innerHTML = "<li>There has been no service downtime in the past 30 days.</li>";
       }
     }
+
+    // Fetch Event List
+    async function fetchEventList() {
+      const response = await fetch(GRAPHQL_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          query: `
+            query GetEvent {
+              event {
+                name
+                _id
+                lastUpdateTime
+                service
+                startTime
+                resolved
+              }
+            }
+          `,
+        }),
+      });
+      const result = await response.json();
+      const eventListElement = document.getElementById("event-list");
+      eventListElement.innerHTML = "";
+      result.data.event.forEach((event) => {
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td>${event.name}</td>
+          <td>${event.startTime}</td>
+          <td>${event.lastUpdateTime}</td>
+        `;
+        // Add event listener to fetch details on click
+        row.addEventListener("click", () => fetchEventDetails(event._id));
+        eventListElement.appendChild(row);
+      });
+    }
+
+    // Fetch Event Details
+    async function fetchEventDetails(eventId) {
+      const response = await fetch(GRAPHQL_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          query: `
+            query GetEventDetail($id: string) {
+              event_detail(where: { _id: { _eq: $id } }) {
+                _id
+                name
+                startTime
+                lastUpdateTime
+              }
+            }
+          `,
+          variables: {
+            id: eventId,
+          },
+        }),
+      }); 
+
+      const result = await response.json(); 
+
+      if (response.ok && !result.errors) {
+        const eventData = result.data.event_detail[0]; // Assuming one matching record  
+
+        // Update event details section
+        const eventDetailsSection = document.getElementById("event-details");
+        document.getElementById("event-status").textContent = eventData.resolved
+          ? "Resolved"
+          : "Unresolved";
+        document.getElementById("event-name").textContent = eventData.name;
+        document.getElementById("event-start").textContent = eventData.startTime;
+        document.getElementById("event-last-update").textContent =
+          eventData.lastUpdateTime;
+          document.getElementById("event-service").textContent = eventData.service || "N/A";
+
+          const timelineElement = document.getElementById("event-description");
+          timelineElement.innerHTML = "";
+          if (eventData.description) {
+            eventData.description.forEach((desc) => {
+              const timelineItem = document.createElement("div");
+              timelineItem.className = "timeline-item";
+              timelineItem.innerHTML = `<p><strong>${desc.time}:</strong> ${desc.detail}</p>`;
+              timelineElement.appendChild(timelineItem);
+            });
+          } else {
+            const emptyMessage = document.createElement("div");
+            emptyMessage.className = "timeline-item";
+            emptyMessage.innerHTML = `<p>N/A</p>`;
+            timelineElement.appendChild(emptyMessage);
+          }
+
+        // Show event details section
+        eventDetailsSection.classList.remove("hidden");
+      } else {
+        console.error("GraphQL Error:", result.errors || response.statusText);
+      }
+    }
+
+    async function downloadReport() {
+      try {
+        const response = await fetch('https://hstm-report.braydenlab.com', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        });
+
+        const data = await response.json();
+        console.log('Report data:', data);
+
+        // 차트 생성
+        const canvas = document.getElementById('reportChart');
+        canvas.width = 800;
+        canvas.height = 400;
+
+        new Chart(canvas, {
+          type: 'bar',
+          data: {
+            labels: ['월간 가동률', '연간 가동률'],
+            datasets: [{
+              label: '가동률 (%)',
+              data: [data.monthly_report.update_rate, data.yearly_report.update_rate],
+              backgroundColor: ['rgba(75, 192, 192, 0.6)', 'rgba(54, 162, 235, 0.6)'],
+              borderColor: ['rgba(75, 192, 192, 1)', 'rgba(54, 162, 235, 1)'],
+              borderWidth: 1
+            }]
+          },
+          options: {
+            responsive: false,
+            scales: {
+              y: {
+                beginAtZero: true,
+                max: 100
+              }
+            }
+          }
+        });
+
+        // PDF 생성
+        const pdf = new jspdf.jsPDF();
+        
+        // 제목 추가
+        pdf.setFontSize(20);
+        pdf.text('서비스 가동률 리포트', 20, 20);
+        
+        // 월간 리포트 정보
+        pdf.setFontSize(14);
+        pdf.text('월간 리포트', 20, 40);
+        pdf.setFontSize(12);
+        pdf.text(`총 시간: ${(data.monthly_report.total_seconds / 3600).toFixed(1)}시간`, 30, 50);
+        pdf.text(`장애 시간: ${(data.monthly_report.error_seconds / 3600).toFixed(1)}시간`, 30, 60);
+        pdf.text(`가동률: ${data.monthly_report.update_rate.toFixed(2)}%`, 30, 70);
+
+        // 연간 리포트 정보
+        pdf.setFontSize(14);
+        pdf.text('연간 리포트', 20, 90);
+        pdf.setFontSize(12);
+        pdf.text(`총 시간: ${(data.yearly_report.total_seconds / 3600).toFixed(1)}시간`, 30, 100);
+        pdf.text(`장애 시간: ${(data.yearly_report.error_seconds / 3600).toFixed(1)}시간`, 30, 110);
+        pdf.text(`가동률: ${data.yearly_report.update_rate.toFixed(2)}%`, 30, 120);
+
+        // 차트 이미지 추가
+        const chartImage = canvas.toDataURL('image/png');
+        pdf.addImage(chartImage, 'PNG', 20, 140, 170, 85);
+
+        // PDF 다운로드
+        pdf.save('service-report.pdf');
+
+      } catch (error) {
+        console.error('Error downloading report:', error);
+        alert('리포트 다운로드 중 오류가 발생했습니다.');
+      }
+    }
+
+    // Initialize Page
+    async function initializePage() {
+      const lastUpdatedElement = document.getElementById("last-updated");
+      lastUpdatedElement.textContent = new Date().toLocaleString();
+      initializeMonthFilter();
+      await Promise.all([fetchServiceHistory(), fetchEventList()]);
+    }
+
+    // On page load
+    document.addEventListener("DOMContentLoaded", initializePage);
+
+    // 이벤트 리스너 추가
+    document.getElementById('download-report').addEventListener('click', downloadReport);
   </script>
+
+  <style>
+  .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+  }
+
+  .download-btn {
+    background-color: #4CAF50;
+    color: white;
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+  }
+
+  .download-btn:hover {
+    background-color: #45a049;
+  }
+  </style>
 </body>
 </html>
